@@ -12,7 +12,11 @@ class RouteHandler {
   final Pattern path;
   final MockHandler handler;
 
-  RouteHandler({required this.method, required this.path, required this.handler});
+  RouteHandler({
+    required this.method,
+    required this.path,
+    required this.handler,
+  });
 
   bool matches(Request request) {
     return request.method.toUpperCase() == method.toUpperCase() &&
@@ -21,14 +25,24 @@ class RouteHandler {
 }
 
 class MockWebServer {
-  final List<RouteHandler> _handlers;
+  final List<RouteHandler> _initialHandlers;
+  List<RouteHandler> _handlers;
   HttpServer? _server;
   int? _port;
 
-  MockWebServer([List<RouteHandler> handlers = const []]) : _handlers = List.from(handlers);
+  MockWebServer([List<RouteHandler> handlers = const []])
+    : _initialHandlers = List.from(handlers),
+      _handlers = List.from(handlers);
 
-  /// Add a new route handler.
-  void use(RouteHandler handler) => _handlers.add(handler);
+  /// Add route handlers.
+  void use(List<RouteHandler> handlers) {
+    _handlers.addAll(handlers);
+  }
+
+  /// Reset all handlers to initial state or to the provided handlers
+  void resetHandlers([List<RouteHandler>? nextHandlers]) {
+    _handlers = List.from(nextHandlers ?? _initialHandlers);
+  }
 
   /// Start the server.
   Future<void> listen({int port = 0}) async {
@@ -38,7 +52,9 @@ class MockWebServer {
           return await rh.handler(request);
         }
       }
-      return Response.notFound('No handler found for \\${request.method} \\${request.url.path}');
+      return Response.notFound(
+        'No handler found for \\${request.method} \\${request.url.path}',
+      );
     };
     _server = await shelf_io.serve(handler, 'localhost', port);
     _port = _server!.port;
@@ -56,7 +72,9 @@ class MockWebServer {
 }
 
 /// Factory function to setup a mock server, similar to mswjs's setupServer.
-MockWebServer setupServer([List<RouteHandler> handlers = const []]) => MockWebServer(handlers);
+MockWebServer setupServer([List<RouteHandler> handlers = const []]) =>
+    MockWebServer(handlers);
 
 /// Helper to create a route handler for a method and path.
-RouteHandler on(String method, Pattern path, MockHandler handler) => RouteHandler(method: method, path: path, handler: handler);
+RouteHandler on(String method, Pattern path, MockHandler handler) =>
+    RouteHandler(method: method, path: path, handler: handler);

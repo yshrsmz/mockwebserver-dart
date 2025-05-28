@@ -1,8 +1,7 @@
 import 'package:mockwebserver/mockwebserver.dart';
 import 'package:test/test.dart';
 import 'dart:convert';
-import 'dart:io';
-import 'package:shelf/shelf.dart';
+import 'package:http/http.dart' as http;
 
 void main() {
   group('MockWebServer', () {
@@ -13,7 +12,10 @@ void main() {
         on('GET', 'hello', (req) async => Response.ok('Hello, test!')),
         on('POST', 'echo', (req) async {
           final body = await req.readAsString();
-          return Response.ok(jsonEncode({'echo': body}), headers: {'content-type': 'application/json'});
+          return Response.ok(
+            jsonEncode({'echo': body}),
+            headers: {'content-type': 'application/json'},
+          );
         }),
       ]);
       await server.listen();
@@ -25,27 +27,128 @@ void main() {
 
     test('responds to GET /hello', () async {
       final url = Uri.parse('http://localhost:${server.port}/hello');
-      final response = await HttpClient().getUrl(url).then((req) => req.close());
-      final body = await response.transform(utf8.decoder).join();
+      final response = await http.get(url);
       expect(response.statusCode, 200);
-      expect(body, 'Hello, test!');
+      expect(response.body, 'Hello, test!');
     });
 
     test('responds to POST /echo', () async {
       final url = Uri.parse('http://localhost:${server.port}/echo');
-      final client = HttpClient();
-      final request = await client.postUrl(url);
-      request.write('ping');
-      final response = await request.close();
-      final body = await response.transform(utf8.decoder).join();
+      final response = await http.post(url, body: 'ping');
       expect(response.statusCode, 200);
-      expect(jsonDecode(body), {'echo': 'ping'});
+      expect(jsonDecode(response.body), {'echo': 'ping'});
     });
 
     test('returns 404 for unknown route', () async {
       final url = Uri.parse('http://localhost:${server.port}/notfound');
-      final response = await HttpClient().getUrl(url).then((req) => req.close());
+      final response = await http.get(url);
       expect(response.statusCode, 404);
+    });
+
+    test('can reset handlers to initial state', () async {
+      // First verify original handler works
+      final url = Uri.parse('http://localhost:${server.port}/hello');
+      var response = await http.get(url);
+      expect(response.body, 'Hello, test!');
+
+      // Add a new handler
+      server.use([
+        on('GET', 'new', (req) async => Response.ok('New handler!')),
+      ]);
+
+      // Verify new handler works
+      final newUrl = Uri.parse('http://localhost:${server.port}/new');
+      response = await http.get(newUrl);
+      expect(response.body, 'New handler!');
+
+      // Reset to initial state
+      server.resetHandlers();
+
+      // Verify new handler is gone
+      response = await http.get(newUrl);
+      expect(response.statusCode, 404);
+
+      // Verify original handler still works
+      response = await http.get(url);
+      expect(response.body, 'Hello, test!');
+    });
+
+    test('can set new handlers and reset to them', () async {
+      // First verify original handler works
+      final url = Uri.parse('http://localhost:${server.port}/hello');
+      var response = await http.get(url);
+      expect(response.body, 'Hello, test!');
+
+      // Set new handlers
+      final newHandlers = [
+        on('GET', 'new', (req) async => Response.ok('New handler!')),
+      ];
+      server.resetHandlers(newHandlers);
+
+      // Verify old handler is gone
+      response = await http.get(url);
+      expect(response.statusCode, 404);
+
+      // Verify new handler works
+      final newUrl = Uri.parse('http://localhost:${server.port}/new');
+      response = await http.get(newUrl);
+      expect(response.body, 'New handler!');
+
+      // Add temporary handler
+      server.use([
+        on('GET', 'temp', (req) async => Response.ok('Temporary handler!')),
+      ]);
+
+      // Verify temporary handler works
+      final tempUrl = Uri.parse('http://localhost:${server.port}/temp');
+      response = await http.get(tempUrl);
+      expect(response.body, 'Temporary handler!');
+
+      // Reset to new handlers
+      server.resetHandlers(newHandlers);
+
+      // Verify temporary handler is gone
+      response = await http.get(tempUrl);
+      expect(response.statusCode, 404);
+
+      // Verify new handler still works
+      response = await http.get(newUrl);
+      expect(response.body, 'New handler!');
+
+      // Reset to initial state
+      server.resetHandlers();
+
+      // Verify we're back to original handlers
+      response = await http.get(url);
+      expect(response.body, 'Hello, test!');
+    });
+
+    test('can add multiple handlers at once', () async {
+      server.resetHandlers();
+      server.use([
+        on('GET', 'one', (req) async => Response.ok('One')),
+        on('GET', 'two', (req) async => Response.ok('Two')),
+      ]);
+
+      final url1 = Uri.parse('http://localhost:${server.port}/one');
+      final url2 = Uri.parse('http://localhost:${server.port}/two');
+
+      var response = await http.get(url1);
+      expect(response.body, 'One');
+
+      response = await http.get(url2);
+      expect(response.body, 'Two');
+    });
+
+    test('can add a single handler', () async {
+      server.resetHandlers();
+      server.use([
+        on('GET', 'single', (req) async => Response.ok('Single handler')),
+      ]);
+
+      final url = Uri.parse('http://localhost:${server.port}/single');
+      final response = await http.get(url);
+      expect(response.body, 'Single handler');
     });
   });
 }

@@ -21,11 +21,18 @@ This document describes the design of the `MockWebServer` Dart library, which pr
 - **API:**
   - `listen({int port = 0})`: Starts the server on the given port (or a random port if 0).
   - `close()`: Stops the server.
-  - `use(RouteHandler handler)`: Adds a new handler at runtime.
+  - `use(List<RouteHandler> handlers)`: Adds new handlers to the current set.
+  - `resetHandlers([List<RouteHandler>? nextHandlers])`: 
+    - Without arguments: Resets to the original initial handlers
+    - With arguments: Sets new handlers (temporarily) without modifying initial state
   - `port`: Returns the port the server is listening on.
 - **Request Handling:**
   - For each incoming request, iterates through handlers and invokes the first match.
   - Returns 404 if no handler matches.
+- **Handler Management:**
+  - Initial handlers set during server creation remain immutable
+  - Current handlers can be modified through `use()` and `resetHandlers()`
+  - Always possible to reset to the original initial state
 
 ### 3. Handler Registration
 - **Helper Function:** `on(method, path, handler)` creates a `RouteHandler` with named parameters for clarity.
@@ -42,20 +49,44 @@ This document describes the design of the `MockWebServer` Dart library, which pr
 - **Simplicity:** API is minimal and inspired by mswjs, making it easy to use for most test scenarios.
 - **Extensibility:** Named parameters and clear separation of concerns make it easy to add new features.
 - **Testability:** Designed for use in automated tests, with predictable and inspectable behavior.
+- **Immutable Initial State:** Initial handlers remain unchanged, ensuring tests can always reset to a known state.
 
 ## Example Usage
+
 ```dart
-final server = setupServer([
-  on('GET', 'hello', (req) async => Response.ok('Hello, world!')),
-  on('POST', 'echo', (req) async {
-    final body = await req.readAsString();
-    return Response.ok(jsonEncode({'echo': body}), headers: {'content-type': 'application/json'});
-  }),
-]);
-await server.listen();
-// ...
-await server.close();
+void main() {
+  late MockWebServer server;
+
+  setUp(() async {
+    // Initialize with initial handlers
+    server = setupServer([
+      on('GET', 'hello', (req) async => Response.ok('Hello, test!')),
+      on('POST', 'echo', (req) async => Response.ok('Echo!')),
+    ]);
+    await server.listen();
+  });
+
+  tearDown(() async {
+    await server.close();
+  });
+
+  test('can modify handlers during test', () async {
+    // Add temporary handlers
+    server.use([
+      on('GET', 'temp', (req) async => Response.ok('Temp!')),
+    ]);
+
+    // Reset to new handlers
+    server.resetHandlers([
+      on('GET', 'new', (req) async => Response.ok('New!')),
+    ]);
+
+    // Reset to initial state
+    server.resetHandlers();
+  });
+}
 ```
 
 ---
+
 This document should be updated as new features are added or design decisions are made.
