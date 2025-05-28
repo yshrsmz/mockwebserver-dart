@@ -46,17 +46,20 @@ class MockWebServer {
 
   /// Start the server.
   Future<void> listen({int port = 0}) async {
-    final handler = (Request request) async {
-      for (final rh in _handlers) {
-        if (rh.matches(request)) {
-          return await rh.handler(request);
+    _server = await shelf_io.serve(
+      (Request request) async {
+        for (final rh in _handlers) {
+          if (rh.matches(request)) {
+            return await rh.handler(request);
+          }
         }
-      }
-      return Response.notFound(
-        'No handler found for \\${request.method} \\${request.url.path}',
-      );
-    };
-    _server = await shelf_io.serve(handler, 'localhost', port);
+        return Response.notFound(
+          'No handler found for \\${request.method} \\${request.url.path}',
+        );
+      },
+      'localhost',
+      port,
+    );
     _port = _server!.port;
   }
 
