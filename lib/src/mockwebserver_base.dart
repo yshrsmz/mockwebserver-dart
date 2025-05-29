@@ -4,23 +4,67 @@ import 'package:shelf/shelf.dart';
 import 'package:shelf/shelf_io.dart' as shelf_io;
 
 /// Type for a request handler, similar to MSWJS's request handler.
-typedef MockHandler = FutureOr<Response> Function(Request request);
+typedef MockHandler = FutureOr<Response> Function(RequestContext context);
+
+/// Context object that wraps the original request and provides access to path parameters
+class RequestContext {
+  final Request request;
+  final Map<String, String> params;
+
+  RequestContext(this.request, this.params);
+
+  /// Get a path parameter value
+  String? param(String name) => params[name];
+}
 
 /// Route matcher for HTTP method and path.
 class RouteHandler {
   final String method;
-  final Pattern path;
+  final String path;
   final MockHandler handler;
+  final List<String> _pathSegments;
 
   RouteHandler({
     required this.method,
     required this.path,
     required this.handler,
-  });
+  }) : _pathSegments = path.split('/');
 
   bool matches(Request request) {
-    return request.method.toUpperCase() == method.toUpperCase() &&
-        path.matchAsPrefix(request.url.path) != null;
+    if (request.method.toUpperCase() != method.toUpperCase()) {
+      return false;
+    }
+
+    final requestSegments = request.url.path.split('/');
+    if (requestSegments.length != _pathSegments.length) {
+      return false;
+    }
+
+    for (var i = 0; i < _pathSegments.length; i++) {
+      final segment = _pathSegments[i];
+      final requestSegment = requestSegments[i];
+
+      if (!segment.startsWith(':') && segment != requestSegment) {
+        return false;
+      }
+    }
+
+    return true;
+  }
+
+  Future<Response> handle(Request request) async {
+    final requestSegments = request.url.path.split('/');
+    final params = <String, String>{};
+
+    for (var i = 0; i < _pathSegments.length; i++) {
+      final segment = _pathSegments[i];
+      if (segment.startsWith(':')) {
+        final paramName = segment.substring(1);
+        params[paramName] = requestSegments[i];
+      }
+    }
+
+    return await handler(RequestContext(request, params));
   }
 }
 
@@ -50,7 +94,7 @@ class MockWebServer {
       (Request request) async {
         for (final rh in _handlers) {
           if (rh.matches(request)) {
-            return await rh.handler(request);
+            return await rh.handle(request);
           }
         }
         return Response.notFound(
@@ -79,5 +123,5 @@ MockWebServer setupServer([List<RouteHandler> handlers = const []]) =>
     MockWebServer(handlers);
 
 /// Helper to create a route handler for a method and path.
-RouteHandler on(String method, Pattern path, MockHandler handler) =>
+RouteHandler on(String method, String path, MockHandler handler) =>
     RouteHandler(method: method, path: path, handler: handler);

@@ -9,13 +9,22 @@ void main() {
 
     setUp(() async {
       server = setupServer([
-        on('GET', 'hello', (req) async => Response.ok('Hello, test!')),
-        on('POST', 'echo', (req) async {
-          final body = await req.readAsString();
+        on('GET', 'hello', (context) async => Response.ok('Hello, test!')),
+        on('POST', 'echo', (context) async {
+          final body = await context.request.readAsString();
           return Response.ok(
             jsonEncode({'echo': body}),
             headers: {'content-type': 'application/json'},
           );
+        }),
+        on('GET', 'users/:id', (context) async {
+          final id = context.param('id');
+          return Response.ok(jsonEncode({'id': id}));
+        }),
+        on('GET', 'users/:id/posts/:postId', (context) async {
+          final id = context.param('id');
+          final postId = context.param('postId');
+          return Response.ok(jsonEncode({'userId': id, 'postId': postId}));
         }),
       ]);
       await server.listen();
@@ -45,6 +54,22 @@ void main() {
       expect(response.statusCode, 404);
     });
 
+    test('handles path parameters', () async {
+      final url = Uri.parse('http://localhost:${server.port}/users/123');
+      final response = await http.get(url);
+      expect(response.statusCode, 200);
+      expect(jsonDecode(response.body), {'id': '123'});
+    });
+
+    test('handles multiple path parameters', () async {
+      final url = Uri.parse(
+        'http://localhost:${server.port}/users/123/posts/456',
+      );
+      final response = await http.get(url);
+      expect(response.statusCode, 200);
+      expect(jsonDecode(response.body), {'userId': '123', 'postId': '456'});
+    });
+
     test('can reset handlers to initial state', () async {
       // First verify original handler works
       final url = Uri.parse('http://localhost:${server.port}/hello');
@@ -53,7 +78,7 @@ void main() {
 
       // Add a new handler
       server.use([
-        on('GET', 'new', (req) async => Response.ok('New handler!')),
+        on('GET', 'new', (context) async => Response.ok('New handler!')),
       ]);
 
       // Verify new handler works
@@ -81,7 +106,7 @@ void main() {
 
       // Set new handlers
       final newHandlers = [
-        on('GET', 'new', (req) async => Response.ok('New handler!')),
+        on('GET', 'new', (context) async => Response.ok('New handler!')),
       ];
       server.resetHandlers(newHandlers);
 
@@ -96,7 +121,7 @@ void main() {
 
       // Add temporary handler
       server.use([
-        on('GET', 'temp', (req) async => Response.ok('Temporary handler!')),
+        on('GET', 'temp', (context) async => Response.ok('Temporary handler!')),
       ]);
 
       // Verify temporary handler works
@@ -126,8 +151,8 @@ void main() {
     test('can add multiple handlers at once', () async {
       server.resetHandlers();
       server.use([
-        on('GET', 'one', (req) async => Response.ok('One')),
-        on('GET', 'two', (req) async => Response.ok('Two')),
+        on('GET', 'one', (context) async => Response.ok('One')),
+        on('GET', 'two', (context) async => Response.ok('Two')),
       ]);
 
       final url1 = Uri.parse('http://localhost:${server.port}/one');
@@ -143,7 +168,7 @@ void main() {
     test('can add a single handler', () async {
       server.resetHandlers();
       server.use([
-        on('GET', 'single', (req) async => Response.ok('Single handler')),
+        on('GET', 'single', (context) async => Response.ok('Single handler')),
       ]);
 
       final url = Uri.parse('http://localhost:${server.port}/single');
