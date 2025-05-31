@@ -9,6 +9,7 @@ void main() async {
     on('GET', 'hello', (context) async => Response.ok('Hello, test!')),
     on('POST', 'echo', (context) async {
       final body = await context.request.readAsString();
+
       return Response.ok(
         jsonEncode({'echo': body}),
         headers: {'content-type': 'application/json'},
