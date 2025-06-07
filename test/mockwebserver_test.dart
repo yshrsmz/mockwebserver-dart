@@ -1,4 +1,5 @@
 import 'package:mockwebserver/mockwebserver.dart';
+import 'package:mockwebserver/src/handlers/http_handler.dart';
 import 'package:test/test.dart';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
@@ -8,22 +9,25 @@ void main() {
     late MockWebServer server;
 
     setUp(() async {
-      server = setupServer([
-        on('GET', 'hello', (context) async => Response.ok('Hello, test!')),
-        on('POST', 'echo', (context) async {
-          final body = await context.request.readAsString();
+      server = MockWebServer.setup([
+        HttpHandler.get(
+          'hello',
+          (request, extra) async => Response.ok('Hello, test!'),
+        ),
+        HttpHandler.post('/echo', (request, extra) async {
+          final body = await request.readAsString();
           return Response.ok(
             jsonEncode({'echo': body}),
             headers: {'content-type': 'application/json'},
           );
         }),
-        on('GET', 'users/:id', (context) async {
-          final id = context.param('id');
+        HttpHandler.get('/users/:id', (request, extra) async {
+          final id = extra.params['id'];
           return Response.ok(jsonEncode({'id': id}));
         }),
-        on('GET', 'users/:id/posts/:postId', (context) async {
-          final id = context.param('id');
-          final postId = context.param('postId');
+        HttpHandler.get('/users/:id/posts/:postId', (request, extra) async {
+          final id = extra.params['id'];
+          final postId = extra.params['postId'];
           return Response.ok(jsonEncode({'userId': id, 'postId': postId}));
         }),
       ]);
@@ -52,6 +56,7 @@ void main() {
       final url = Uri.parse('http://localhost:${server.port}/notfound');
       final response = await http.get(url);
       expect(response.statusCode, 404);
+      expect(response.body, 'No handler found for GET /notfound');
     });
 
     test('handles path parameters', () async {
@@ -78,7 +83,10 @@ void main() {
 
       // Add a new handler
       server.use([
-        on('GET', 'new', (context) async => Response.ok('New handler!')),
+        HttpHandler.get(
+          'new',
+          (request, extra) async => Response.ok('New handler!'),
+        ),
       ]);
 
       // Verify new handler works
@@ -106,7 +114,10 @@ void main() {
 
       // Set new handlers
       final newHandlers = [
-        on('GET', 'new', (context) async => Response.ok('New handler!')),
+        HttpHandler.get(
+          'new',
+          (request, extra) async => Response.ok('New handler!'),
+        ),
       ];
       server.resetHandlers(newHandlers);
 
@@ -121,7 +132,10 @@ void main() {
 
       // Add temporary handler
       server.use([
-        on('GET', 'temp', (context) async => Response.ok('Temporary handler!')),
+        HttpHandler.get(
+          'temp',
+          (request, extra) async => Response.ok('Temporary handler!'),
+        ),
       ]);
 
       // Verify temporary handler works
@@ -151,8 +165,8 @@ void main() {
     test('can add multiple handlers at once', () async {
       server.resetHandlers();
       server.use([
-        on('GET', 'one', (context) async => Response.ok('One')),
-        on('GET', 'two', (context) async => Response.ok('Two')),
+        HttpHandler.get('one', (request, extra) async => Response.ok('One')),
+        HttpHandler.get('two', (request, extra) async => Response.ok('Two')),
       ]);
 
       final url1 = Uri.parse('http://localhost:${server.port}/one');
@@ -168,7 +182,10 @@ void main() {
     test('can add a single handler', () async {
       server.resetHandlers();
       server.use([
-        on('GET', 'single', (context) async => Response.ok('Single handler')),
+        HttpHandler.get(
+          'single',
+          (request, extra) async => Response.ok('Single handler'),
+        ),
       ]);
 
       final url = Uri.parse('http://localhost:${server.port}/single');

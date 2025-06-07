@@ -1,109 +1,53 @@
 import 'dart:async';
 import 'dart:io';
+import 'package:mockwebserver/src/handlers/request_handler.dart';
 import 'package:shelf/shelf.dart';
 import 'package:shelf/shelf_io.dart' as shelf_io;
 
-/// Type for a request handler, similar to MSWJS's request handler.
-typedef MockHandler = FutureOr<Response> Function(RequestContext context);
-
-/// Context object that wraps the original request and provides access to path parameters
-class RequestContext {
-  final Request request;
-  final Map<String, String> params;
-
-  RequestContext(this.request, this.params);
-
-  /// Get a path parameter value
-  String? param(String name) => params[name];
-}
-
-/// Route matcher for HTTP method and path.
-class RouteHandler {
-  final String method;
-  final String path;
-  final MockHandler handler;
-  final List<String> _pathSegments;
-
-  RouteHandler({
-    required this.method,
-    required this.path,
-    required this.handler,
-  }) : _pathSegments = path.split('/');
-
-  bool matches(Request request) {
-    if (request.method.toUpperCase() != method.toUpperCase()) {
-      return false;
-    }
-
-    final requestSegments = request.url.path.split('/');
-    if (requestSegments.length != _pathSegments.length) {
-      return false;
-    }
-
-    for (var i = 0; i < _pathSegments.length; i++) {
-      final segment = _pathSegments[i];
-      final requestSegment = requestSegments[i];
-
-      if (!segment.startsWith(':') && segment != requestSegment) {
-        return false;
-      }
-    }
-
-    return true;
-  }
-
-  Future<Response> handle(Request request) async {
-    final requestSegments = request.url.path.split('/');
-    final params = <String, String>{};
-
-    for (var i = 0; i < _pathSegments.length; i++) {
-      final segment = _pathSegments[i];
-      if (segment.startsWith(':')) {
-        final paramName = segment.substring(1);
-        params[paramName] = requestSegments[i];
-      }
-    }
-
-    return await handler(RequestContext(request, params));
-  }
-}
-
 class MockWebServer {
-  final List<RouteHandler> _initialHandlers;
-  List<RouteHandler> _handlers;
+  final List<RequestHandler> _initialHandlers;
+  List<RequestHandler> _handlers;
   HttpServer? _server;
   int? _port;
 
-  MockWebServer([List<RouteHandler> handlers = const []])
+  MockWebServer._([List<RequestHandler> handlers = const []])
     : _initialHandlers = List.from(handlers),
       _handlers = List.from(handlers);
 
+  /// Factory function to setup a mock server, similar to mswjs's setupServer.
+  factory MockWebServer.setup(List<RequestHandler> handlers) =>
+      MockWebServer._(handlers);
+
   /// Add route handlers.
-  void use(List<RouteHandler> handlers) {
+  void use(List<RequestHandler> handlers) {
     _handlers.addAll(handlers);
   }
 
   /// Reset all handlers to initial state or to the provided handlers
-  void resetHandlers([List<RouteHandler>? nextHandlers]) {
+  void resetHandlers([List<RequestHandler>? nextHandlers]) {
     _handlers = List.from(nextHandlers ?? _initialHandlers);
+  }
+
+  Future<HttpServer> _parepareServer(int port) async {
+    final handler = Pipeline().addMiddleware(logRequests()).addHandler((
+      Request request,
+    ) async {
+      for (final rh in _handlers) {
+        if (rh.test(request)) {
+          return await rh.handle(request);
+        }
+      }
+      return Response.notFound(
+        'No handler found for ${request.method} /${request.url.path}',
+      );
+    });
+
+    return await shelf_io.serve(handler, 'localhost', port);
   }
 
   /// Start the server.
   Future<void> listen({int port = 0}) async {
-    _server = await shelf_io.serve(
-      (Request request) async {
-        for (final rh in _handlers) {
-          if (rh.matches(request)) {
-            return await rh.handle(request);
-          }
-        }
-        return Response.notFound(
-          'No handler found for \\${request.method} \\${request.url.path}',
-        );
-      },
-      'localhost',
-      port,
-    );
+    _server = await _parepareServer(port);
     _port = _server!.port;
   }
 
@@ -115,13 +59,10 @@ class MockWebServer {
   }
 
   /// Get the port the server is listening on.
+  /// Returns null if the server is not listening.
   int? get port => _port;
+
+  /// Get the URL the server is listening on.
+  /// Returns null if the server is not listening.
+  String? get url => _port == null ? null : 'http://localhost:$_port';
 }
-
-/// Factory function to setup a mock server, similar to mswjs's setupServer.
-MockWebServer setupServer([List<RouteHandler> handlers = const []]) =>
-    MockWebServer(handlers);
-
-/// Helper to create a route handler for a method and path.
-RouteHandler on(String method, String path, MockHandler handler) =>
-    RouteHandler(method: method, path: path, handler: handler);

@@ -1,22 +1,25 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
+import 'package:mockwebserver/http.dart';
 import 'package:mockwebserver/mockwebserver.dart';
-import 'dart:io';
 
 void main() async {
   // Setup the mock server with initial handlers
-  final server = setupServer([
-    on('GET', 'hello', (context) async => Response.ok('Hello, test!')),
-    on('POST', 'echo', (context) async {
-      final body = await context.request.readAsString();
+  final server = MockWebServer.setup([
+    HttpHandler.get(
+      'hello',
+      (request, extra) async => Response.ok('Hello, test!'),
+    ),
+    HttpHandler.post('echo', (request, extra) async {
+      final body = await request.readAsString();
 
       return Response.ok(
         jsonEncode({'echo': body}),
         headers: {'content-type': 'application/json'},
       );
     }),
-    on('GET', 'users/:id', (context) async {
-      final id = context.param('id');
+    HttpHandler.get('users/:id', (request, extra) async {
+      final id = extra.params['id'];
       return Response.ok(jsonEncode({'id': id}));
     }),
   ]);
@@ -44,7 +47,10 @@ void main() async {
     // Test adding new handlers
     print('\nAdding new handlers:');
     server.use([
-      on('GET', 'new', (context) async => Response.ok('New handler!')),
+      HttpHandler.get(
+        'new',
+        (request, extra) async => Response.ok('New handler!'),
+      ),
     ]);
 
     final newUrl = Uri.parse('http://localhost:${server.port}/new');
@@ -61,7 +67,10 @@ void main() async {
     // Test setting new handlers
     print('\nSetting new handlers:');
     server.resetHandlers([
-      on('GET', 'custom', (context) async => Response.ok('Custom handler!')),
+      HttpHandler.get(
+        'custom',
+        (request, extra) async => Response.ok('Custom handler!'),
+      ),
     ]);
 
     final customUrl = Uri.parse('http://localhost:${server.port}/custom');
