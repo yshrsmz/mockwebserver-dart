@@ -38,6 +38,7 @@ class _RegExpHttpMethod extends _HttpMethodType {
 }
 
 class HttpHandlerOptions {
+  /// If true, the handler will only be used once.
   final bool once;
 
   const HttpHandlerOptions({this.once = false});
@@ -65,6 +66,9 @@ class HttpHandler implements RequestHandler {
 
   final List<String> _pathSegments;
   int _usedCount = 0;
+
+  @override
+  int get usedCount => _usedCount;
 
   HttpHandler._({
     required _HttpMethodType method,
@@ -219,5 +223,10 @@ class HttpHandler implements RequestHandler {
   @override
   Future<void> log(Request request, Response response) async {
     print('${request.method} ${request.url.path} ${response.statusCode}');
+  }
+
+  @override
+  void reset() {
+    _usedCount = 0;
   }
 }

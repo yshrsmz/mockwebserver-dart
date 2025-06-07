@@ -26,6 +26,9 @@ class MockWebServer {
   /// Reset all handlers to initial state or to the provided handlers
   void resetHandlers([List<RequestHandler>? nextHandlers]) {
     _handlers = List.from(nextHandlers ?? _initialHandlers);
+    for (var rh in _handlers) {
+      rh.reset();
+    }
   }
 
   Future<HttpServer> _parepareServer(int port) async {
@@ -65,4 +68,7 @@ class MockWebServer {
   /// Get the URL the server is listening on.
   /// Returns null if the server is not listening.
   String? get url => _port == null ? null : 'http://localhost:$_port';
+
+  /// Get a readonly list of currently active handlers.
+  List<RequestHandler> get activeHandlers => List.unmodifiable(_handlers);
 }

@@ -112,6 +112,8 @@ void main() {
       var response = await http.get(url);
       expect(response.body, 'Hello, test!');
 
+      expect(server.activeHandlers.first.usedCount, 1);
+
       // Set new handlers
       final newHandlers = [
         HttpHandler.get(
@@ -156,6 +158,11 @@ void main() {
 
       // Reset to initial state
       server.resetHandlers();
+
+      // expect usedCount of all active handlers to be 0
+      for (var handler in server.activeHandlers) {
+        expect(handler.usedCount, 0);
+      }
 
       // Verify we're back to original handlers
       response = await http.get(url);
