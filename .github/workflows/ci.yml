@@ -15,8 +15,6 @@ jobs:
 
       - name: Setup mise
         uses: jdx/mise-action@v2
-        with:
-          version: latest
 
       - name: Install dependencies
         run: dart pub get
