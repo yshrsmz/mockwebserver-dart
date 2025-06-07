@@ -60,7 +60,6 @@ const _defaultOptions = HttpHandlerOptions(once: false);
 
 class HttpHandler implements RequestHandler {
   final _HttpMethodType _method;
-  final String _path;
   final ResponseResolver _resolver;
   final HttpHandlerOptions _options;
 
@@ -73,7 +72,6 @@ class HttpHandler implements RequestHandler {
     required ResponseResolver resolver,
     HttpHandlerOptions options = _defaultOptions,
   }) : _method = method,
-       _path = path,
        _resolver = resolver,
        _options = options,
        _pathSegments = _normalizePath(path).split('/');
