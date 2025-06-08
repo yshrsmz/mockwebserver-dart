@@ -17,7 +17,7 @@ Add this to your package's `pubspec.yaml` file:
 
 ```yaml
 dev_dependencies:
-  mockwebserver: ^0.1.0
+  mockwebserver_dart: ^0.1.0
 ```
 
 ## Usage
