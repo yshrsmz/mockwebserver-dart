@@ -1,7 +1,7 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
-import 'package:mockwebserver/http.dart';
-import 'package:mockwebserver/mockwebserver.dart';
+import 'package:mockwebserver_dart/http.dart';
+import 'package:mockwebserver_dart/mockwebserver.dart';
 
 void main() async {
   // Setup the mock server with initial handlers

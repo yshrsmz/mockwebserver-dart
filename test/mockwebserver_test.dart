@@ -1,5 +1,5 @@
-import 'package:mockwebserver/mockwebserver.dart';
-import 'package:mockwebserver/src/handlers/http_handler.dart';
+import 'package:mockwebserver_dart/mockwebserver.dart';
+import 'package:mockwebserver_dart/src/handlers/http_handler.dart';
 import 'package:test/test.dart';
 import 'dart:convert';
 import 'package:http/http.dart' as http;

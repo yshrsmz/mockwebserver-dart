@@ -1,7 +1,7 @@
 import 'dart:async';
 
-import 'package:mockwebserver/src/handlers/request_handler.dart';
-import 'package:mockwebserver/src/utils/cookie.dart';
+import 'package:mockwebserver_dart/src/handlers/request_handler.dart';
+import 'package:mockwebserver_dart/src/utils/cookie.dart';
 import 'package:shelf/shelf.dart';
 
 enum HttpMethod { get, post, put, delete, patch, head, options }

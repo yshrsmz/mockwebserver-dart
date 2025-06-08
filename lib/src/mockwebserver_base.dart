@@ -1,6 +1,6 @@
 import 'dart:async';
 import 'dart:io';
-import 'package:mockwebserver/src/handlers/request_handler.dart';
+import 'package:mockwebserver_dart/src/handlers/request_handler.dart';
 import 'package:shelf/shelf.dart';
 import 'package:shelf/shelf_io.dart' as shelf_io;
 

@@ -1,5 +1,5 @@
 import 'package:test/test.dart';
-import 'package:mockwebserver/src/utils/cookie.dart';
+import 'package:mockwebserver_dart/src/utils/cookie.dart';
 
 void main() {
   group('parseCookieString', () {
