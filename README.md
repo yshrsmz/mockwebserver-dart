@@ -1,16 +1,3 @@
-<!-- 
-This README describes the package. If you publish this package to pub.dev,
-this README's contents appear on the landing page for your package.
-
-For information about how to write a good package README, see the guide for
-[writing package pages](https://dart.dev/tools/pub/writing-package-pages). 
-
-For general information about developing packages, see the Dart guide for
-[creating packages](https://dart.dev/guides/libraries/create-packages)
-and the Flutter guide for
-[developing packages and plugins](https://flutter.dev/to/develop-packages). 
--->
-
 # mockwebserver-dart
 
 A Dart implementation of a mock web server, inspired by [MSWJS](https://mswjs.io/).
@@ -60,8 +47,13 @@ void main() async {
   // Start the server
   await server.listen();
 
+  final url = switch (server.url) {
+    final url? => url,
+    null => throw Exception('Failed to get server URL'),
+  };
+
   // Make requests to the mock server
-  final url = Uri.parse('http://localhost:${server.port}/hello');
+  final url = Uri.parse('$url/hello');
   final response = await http.get(url);
   print(response.body); // Hello, test!
 
@@ -169,8 +161,7 @@ Contributions are welcome! Please feel free to submit a Pull Request. For major 
 4. Push to the branch (`git push origin feature/amazing-feature`)
 5. Open a Pull Request
 
-## Additional information
+## TODO
 
-TODO: Tell users more about the package: where to find more information, how to 
-contribute to the package, how to file issues, what response they can expect 
-from the package authors, and more.
+- [ ] document how to use along with mockito and other mocking packages to track which handler is called with what request
+- [ ] add support/document for other content type such as Protocol Buffers

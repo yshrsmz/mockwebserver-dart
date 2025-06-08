@@ -28,19 +28,25 @@ void main() async {
   await server.listen();
   print('Server running on port ${server.port}');
 
+  final url = switch (server.url) {
+    final url? => url,
+    null => throw Exception('Failed to get server URL'),
+  };
+  print('Server URL: $url');
+
   try {
     // Test initial handlers
     print('\nTesting initial handlers:');
 
-    final helloUrl = Uri.parse('http://localhost:${server.port}/hello');
+    final helloUrl = Uri.parse('$url/hello');
     var response = await http.get(helloUrl);
     print('GET /hello: ${response.body}');
 
-    final echoUrl = Uri.parse('http://localhost:${server.port}/echo');
+    final echoUrl = Uri.parse('$url/echo');
     response = await http.post(echoUrl, body: 'ping');
     print('POST /echo: ${response.body}');
 
-    final userUrl = Uri.parse('http://localhost:${server.port}/users/123');
+    final userUrl = Uri.parse('$url/users/123');
     response = await http.get(userUrl);
     print('GET /users/123: ${response.body}');
 
@@ -53,7 +59,7 @@ void main() async {
       ),
     ]);
 
-    final newUrl = Uri.parse('http://localhost:${server.port}/new');
+    final newUrl = Uri.parse('$url/new');
     response = await http.get(newUrl);
     print('GET /new: ${response.body}');
 
@@ -73,7 +79,7 @@ void main() async {
       ),
     ]);
 
-    final customUrl = Uri.parse('http://localhost:${server.port}/custom');
+    final customUrl = Uri.parse('$url/custom');
     response = await http.get(customUrl);
     print('GET /custom: ${response.body}');
 
