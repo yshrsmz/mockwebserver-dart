@@ -1,6 +1,6 @@
 name: mockwebserver_dart
 description: A mock web server for testing HTTP clients, with support for path parameters, handler management, and built on top of shelf.
-version: 0.1.0
+version: 0.1.0+1
 repository: https://github.com/yshrsmz/mockwebserver-dart
 
 environment:
